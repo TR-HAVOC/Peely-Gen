@@ -2,11 +2,10 @@
 import { useState, useEffect, useMemo } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
-// Force dynamic rendering so Vercel doesn't crash on static prerender
 export const dynamic = 'force-dynamic';
 
 export default function App() {
-  // Safe lazy-initialization of Supabase Client inside component
+  // Safe lazy-initialization of Supabase Client
   const supabase = useMemo(() => {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
     const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key';
@@ -19,21 +18,26 @@ export default function App() {
   // Auth Form State
   const [authEmail, setAuthEmail] = useState('');
   const [authPass, setAuthPass] = useState('');
-  const [authMode, setAuthMode] = useState('login');
+  const [authConfirmPass, setAuthConfirmPass] = useState('');
+  const [showPass, setShowPass] = useState(false);
+  const [showConfirmPass, setShowConfirmPass] = useState(false);
+  const [authMode, setAuthMode] = useState('login'); // 'login' or 'signup'
+  const [authError, setAuthError] = useState(null);
+  const [authMsg, setAuthMsg] = useState(null);
+  const [authLoading, setAuthLoading] = useState(false);
 
   // App Navigation & Settings
   const [activeTab, setActiveTab] = useState('generate');
   const [activePreset, setActivePreset] = useState('peelygen');
 
   // Generator State
-  const [genTier, setGenTier] = useState('free'); // 'free' or 'paid'
+  const [genTier, setGenTier] = useState('free');
   const [service, setService] = useState('roblox');
   const [account, setAccount] = useState(null);
   const [loading, setLoading] = useState(false);
   const [genError, setGenError] = useState(null);
 
   // Gambling State
-  const [blackjackState, setBlackjackState] = useState(null);
   const [gamblingMsg, setGamblingMsg] = useState('');
 
   // Admin State
@@ -47,7 +51,7 @@ export default function App() {
   };
   const theme = presets[activePreset] || presets.peelygen;
 
-  // Load User & Profile
+  // Load Session
   useEffect(() => {
     const fetchSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -64,21 +68,67 @@ export default function App() {
     if (data) setProfile(data);
   };
 
-  // Auth Handlers
+  // Google OAuth Handler
+  const handleGoogleSignIn = async () => {
+    setAuthError(null);
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+      setAuthError('Supabase Environment Variables missing on Vercel Dashboard!');
+      return;
+    }
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: typeof window !== 'undefined' ? `${window.location.origin}` : undefined,
+      },
+    });
+    if (error) setAuthError(error.message);
+  };
+
+  // Email / Password Auth Handlers
   const handleAuth = async (e) => {
     e.preventDefault();
-    if (authMode === 'login') {
-      const { data, error } = await supabase.auth.signInWithPassword({ email: authEmail, password: authPass });
-      if (error) alert(error.message);
-      else { setUser(data.user); loadProfile(data.user.id); }
-    } else {
-      const { data, error } = await supabase.auth.signUp({ 
-        email: authEmail, 
-        password: authPass,
-        options: { data: { username: authEmail.split('@')[0] } }
-      });
-      if (error) alert(error.message);
-      else alert('Account created! You can now log in.');
+    setAuthError(null);
+    setAuthMsg(null);
+
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+      setAuthError('Supabase URL missing! Please add NEXT_PUBLIC_SUPABASE_URL to Vercel Environment Variables.');
+      return;
+    }
+
+    if (authMode === 'signup' && authPass !== authConfirmPass) {
+      setAuthError('Passwords do not match!');
+      return;
+    }
+
+    setAuthLoading(true);
+
+    try {
+      if (authMode === 'login') {
+        const { data, error } = await supabase.auth.signInWithPassword({ 
+          email: authEmail, 
+          password: authPass 
+        });
+        if (error) throw error;
+        setUser(data.user);
+        loadProfile(data.user.id);
+      } else {
+        const { data, error } = await supabase.auth.signUp({ 
+          email: authEmail, 
+          password: authPass,
+          options: { data: { username: authEmail.split('@')[0] } }
+        });
+        if (error) throw error;
+        if (data?.user) {
+          setAuthMsg('Account created successfully! You can now log in.');
+          setAuthMode('login');
+          setAuthPass('');
+          setAuthConfirmPass('');
+        }
+      }
+    } catch (err) {
+      setAuthError(err.message || 'Failed to fetch. Verify Supabase config.');
+    } finally {
+      setAuthLoading(false);
     }
   };
 
@@ -111,18 +161,17 @@ export default function App() {
     }
   };
 
-  // Gambling: 1-Credit Blackjack Game
+  // Gambling Game
   const playBlackjack = async () => {
     if (!profile || profile.gambling_credits < 1) {
       setGamblingMsg('You have used your 1 free credit!');
       return;
     }
 
-    // Deduct 1 credit
     await supabase.from('profiles').update({ gambling_credits: 0 }).eq('id', user.id);
     setProfile({ ...profile, gambling_credits: 0 });
 
-    const playerCard = Math.floor(Math.random() * 10) + 12; // 12-21
+    const playerCard = Math.floor(Math.random() * 10) + 12;
     const dealerCard = Math.floor(Math.random() * 10) + 12;
 
     let msg = '';
@@ -130,11 +179,10 @@ export default function App() {
     else if (dealerCard > 21 || playerCard > dealerCard) msg = `🎉 WIN! You score ${playerCard} vs Dealer ${dealerCard}. Reward unlocked!`;
     else msg = `Dealer won with ${dealerCard} against your ${playerCard}.`;
 
-    setBlackjackState({ playerCard, dealerCard });
     setGamblingMsg(msg);
   };
 
-  // Admin: Load all users
+  // Admin Actions
   const loadAdminUsers = async () => {
     if (profile?.role !== 'admin') return;
     const { data } = await supabase.from('profiles').select('*');
@@ -146,42 +194,141 @@ export default function App() {
     loadAdminUsers();
   };
 
+  // SIGN IN / SIGN UP SCREEN
   if (!user) {
     return (
       <div className="min-h-screen bg-[#080808] text-white flex items-center justify-center p-4">
-        <form onSubmit={handleAuth} className="w-full max-w-md bg-[#0f0f0f] border border-neutral-800 p-6 rounded-xl space-y-4">
+        <div className="w-full max-w-md bg-[#0f0f0f] border border-neutral-800 p-6 rounded-xl space-y-5">
+          
           <div className="text-center">
             <h1 className="text-2xl font-bold tracking-wider text-yellow-500">peelygen</h1>
             <p className="text-xs text-neutral-400 mt-1">Sign in to access Free & Paid account generators</p>
           </div>
-          <div>
-            <label className="text-xs text-neutral-400 uppercase font-bold">Email</label>
-            <input type="email" required value={authEmail} onChange={(e) => setAuthEmail(e.target.value)} className="w-full bg-black border border-neutral-800 rounded px-3 py-2 text-sm mt-1 focus:outline-none" />
-          </div>
-          <div>
-            <label className="text-xs text-neutral-400 uppercase font-bold">Password</label>
-            <input type="password" required value={authPass} onChange={(e) => setAuthPass(e.target.value)} className="w-full bg-black border border-neutral-800 rounded px-3 py-2 text-sm mt-1 focus:outline-none" />
-          </div>
-          <button type="submit" className="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-bold py-2.5 rounded text-sm transition-all">
-            {authMode === 'login' ? 'Sign In' : 'Create Account'}
+
+          {/* Google Auth Button */}
+          <button
+            type="button"
+            onClick={handleGoogleSignIn}
+            className="w-full bg-white hover:bg-neutral-200 text-black font-semibold py-2.5 rounded text-xs flex items-center justify-center gap-2 transition-all shadow"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+            </svg>
+            Continue with Google
           </button>
+
+          <div className="flex items-center gap-2 my-2">
+            <div className="h-[1px] bg-neutral-800 flex-1" />
+            <span className="text-[10px] uppercase text-neutral-500 font-bold">Or Email</span>
+            <div className="h-[1px] bg-neutral-800 flex-1" />
+          </div>
+
+          {/* Form Banner Notifications */}
+          {authError && (
+            <div className="p-3 bg-red-500/10 border border-red-500/30 rounded text-xs text-red-400">
+              {authError}
+            </div>
+          )}
+          {authMsg && (
+            <div className="p-3 bg-green-500/10 border border-green-500/30 rounded text-xs text-green-400">
+              {authMsg}
+            </div>
+          )}
+
+          <form onSubmit={handleAuth} className="space-y-4">
+            <div>
+              <label className="text-[10px] text-neutral-400 uppercase font-bold tracking-wider">Email</label>
+              <input 
+                type="email" 
+                required 
+                value={authEmail} 
+                onChange={(e) => setAuthEmail(e.target.value)} 
+                className="w-full bg-black border border-neutral-800 rounded px-3 py-2 text-sm mt-1 focus:outline-none focus:border-yellow-500" 
+              />
+            </div>
+
+            {/* Password input with show/hide toggle */}
+            <div>
+              <label className="text-[10px] text-neutral-400 uppercase font-bold tracking-wider">Password</label>
+              <div className="relative mt-1">
+                <input 
+                  type={showPass ? 'text' : 'password'} 
+                  required 
+                  value={authPass} 
+                  onChange={(e) => setAuthPass(e.target.value)} 
+                  className="w-full bg-black border border-neutral-800 rounded pl-3 pr-10 py-2 text-sm focus:outline-none focus:border-yellow-500" 
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPass(!showPass)}
+                  className="absolute right-3 top-2.5 text-xs text-neutral-400 hover:text-white"
+                >
+                  {showPass ? '🙈' : '👁️'}
+                </button>
+              </div>
+            </div>
+
+            {/* Confirm Password field (Only visible when signing up) */}
+            {authMode === 'signup' && (
+              <div>
+                <label className="text-[10px] text-neutral-400 uppercase font-bold tracking-wider">Confirm Password</label>
+                <div className="relative mt-1">
+                  <input 
+                    type={showConfirmPass ? 'text' : 'password'} 
+                    required 
+                    value={authConfirmPass} 
+                    onChange={(e) => setAuthConfirmPass(e.target.value)} 
+                    className="w-full bg-black border border-neutral-800 rounded pl-3 pr-10 py-2 text-sm focus:outline-none focus:border-yellow-500" 
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPass(!showConfirmPass)}
+                    className="absolute right-3 top-2.5 text-xs text-neutral-400 hover:text-white"
+                  >
+                    {showConfirmPass ? '🙈' : '👁️'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <button 
+              type="submit" 
+              disabled={authLoading}
+              className="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-bold py-2.5 rounded text-sm transition-all disabled:opacity-50 mt-2"
+            >
+              {authLoading ? 'Processing...' : (authMode === 'login' ? 'Sign In' : 'Create Account')}
+            </button>
+          </form>
+
           <div className="text-center text-xs text-neutral-500">
-            <button type="button" onClick={() => setAuthMode(authMode === 'login' ? 'signup' : 'login')} className="hover:underline">
-              {authMode === 'login' ? 'Need an account? Sign up' : 'Already have an account? Sign in'}
+            <button 
+              type="button" 
+              onClick={() => {
+                setAuthMode(authMode === 'login' ? 'signup' : 'login');
+                setAuthError(null);
+                setAuthMsg(null);
+              }} 
+              className="hover:underline text-neutral-400"
+            >
+              {authMode === 'login' ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
             </button>
           </div>
-        </form>
+
+        </div>
       </div>
     );
   }
 
+  // MAIN APP DASHBOARD
   return (
     <div className="flex min-h-screen antialiased" style={{ backgroundColor: theme.bg, color: theme.text }}>
       
       {/* SIDEBAR */}
       <aside className="w-64 border-r border-neutral-900 flex flex-col justify-between shrink-0" style={{ backgroundColor: theme.card }}>
         <div>
-          {/* PeelyGen Brand Logo Header */}
           <div className="p-4 border-b border-neutral-900 flex items-center gap-3">
             <div className="relative">
               <div className="w-9 h-9 rounded-full border-2 border-green-500 bg-yellow-500 flex items-center justify-center font-black text-black text-xs">
@@ -195,7 +342,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* Profile Strip */}
           <div className="px-4 py-3 border-b border-neutral-900 bg-black/20 flex items-center justify-between text-xs">
             <span className="font-semibold truncate text-white">{profile?.username || user.email}</span>
             <span className="uppercase text-[9px] font-bold px-2 py-0.5 rounded border border-neutral-700" style={{ color: theme.primary }}>
@@ -203,7 +349,6 @@ export default function App() {
             </span>
           </div>
 
-          {/* Navigation */}
           <nav className="p-3 space-y-1 text-xs font-medium">
             {[
               { id: 'generate', label: 'Generator', icon: '⚡' },
@@ -223,7 +368,6 @@ export default function App() {
               </button>
             ))}
 
-            {/* Admin Panel Tab (Only visible to Admin) */}
             {profile?.role === 'admin' && (
               <button
                 onClick={() => { setActiveTab('admin'); loadAdminUsers(); }}
@@ -255,7 +399,6 @@ export default function App() {
 
             <div className="p-6 rounded-xl border border-neutral-800 space-y-4" style={{ backgroundColor: theme.card }}>
               
-              {/* Free Gen vs Paid Gen Selector */}
               <div className="grid grid-cols-2 gap-2 p-1 bg-black/40 border border-neutral-800 rounded-lg">
                 <button
                   onClick={() => setGenTier('free')}
