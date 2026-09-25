@@ -1,14 +1,18 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
-// Initialize Supabase Client for Browser
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-);
+// Force dynamic rendering so Vercel doesn't crash on static prerender
+export const dynamic = 'force-dynamic';
 
 export default function App() {
+  // Safe lazy-initialization of Supabase Client inside component
+  const supabase = useMemo(() => {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key';
+    return createClient(url, key);
+  }, []);
+
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   
@@ -53,7 +57,7 @@ export default function App() {
       }
     };
     fetchSession();
-  }, []);
+  }, [supabase]);
 
   const loadProfile = async (uid) => {
     const { data } = await supabase.from('profiles').select('*').eq('id', uid).single();
