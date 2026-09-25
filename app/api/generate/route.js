@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { createClient } from '@supabase/supabase-js';
 import { Redis } from '@upstash/redis';
 import { NextResponse } from 'next/server';
