@@ -2,21 +2,51 @@
 import { useState } from 'react';
 
 export default function Dashboard() {
-  const [activeTab, setActiveTab] = useState('themes');
-  const [activePreset, setActivePreset] = useState('hellgen');
+  const [activeTab, setActiveTab] = useState('home');
+  const [activePreset, setActivePreset] = useState('peelygen');
   const [service, setService] = useState('roblox');
   const [account, setAccount] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Customizer color state
-  const [colors, setColors] = useState({
-    background: '#080808',
-    text: '#f0f0f0',
-    cardSurface: '#0f0f0f',
-    sidebar: '#111111',
-    contentArea: '#0d0d0d',
-  });
+  // Upgrader / Gambling state
+  const [upgradeInput, setUpgradeInput] = useState('');
+  const [multiplier, setMultiplier] = useState(2);
+  const [upgradeResult, setUpgradeResult] = useState(null);
+  const [isUpgrading, setIsUpgrading] = useState(false);
+
+  // Dynamic Theme Preset Mapping (Yellow as Default)
+  const presets = {
+    peelygen: { primary: '#eab308', bg: '#080808', card: '#0f0f0f', text: '#f0f0f0' }, // Yellow default
+    midnight: { primary: '#4f46e5', bg: '#05050a', card: '#0d0d18', text: '#e0e7ff' },
+    neongreen: { primary: '#10b981', bg: '#020b06', card: '#06170d', text: '#d1fae5' },
+    ice: { primary: '#38bdf8', bg: '#030a12', card: '#091522', text: '#e0f2fe' },
+    purplehaze: { primary: '#9333ea', bg: '#0a0312', card: '#140824', text: '#f3e8ff' },
+    crimson: { primary: '#dc2626', bg: '#080101', card: '#120404', text: '#fee2e2' },
+  };
+
+  const currentTheme = presets[activePreset] || presets.peelygen;
+
+  // Gambling / Upgrade Logic
+  const handleUpgrade = () => {
+    if (!upgradeInput) return;
+    setIsUpgrading(true);
+    setUpgradeResult(null);
+
+    setTimeout(() => {
+      const winChance = (95 / multiplier);
+      const roll = Math.random() * 100;
+      const success = roll <= winChance;
+
+      setIsUpgrading(false);
+      setUpgradeResult({
+        success,
+        roll: roll.toFixed(2),
+        target: winChance.toFixed(2),
+        reward: success ? `${upgradeInput} [UPGRADED ${multiplier}X]` : null
+      });
+    }, 1500);
+  };
 
   const handleGenerate = async () => {
     setLoading(true);
@@ -41,77 +71,80 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#080808] text-[#f0f0f0] font-sans antialiased selection:bg-red-500/30 selection:text-red-400">
+    <div 
+      className="flex min-h-screen font-sans antialiased transition-colors duration-300"
+      style={{ backgroundColor: currentTheme.bg, color: currentTheme.text }}
+    >
       
       {/* 1. LEFT SIDEBAR */}
-      <aside className="w-64 border-r border-neutral-900 bg-[#0b0b0b] flex flex-col justify-between shrink-0">
+      <aside 
+        className="w-64 border-r border-neutral-900/80 flex flex-col justify-between shrink-0"
+        style={{ backgroundColor: currentTheme.card }}
+      >
         <div>
-          {/* Brand Header */}
-          <div className="p-5 flex items-center gap-3 border-b border-neutral-900">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-red-600 to-red-400 flex items-center justify-center font-black text-black text-xs shadow-lg shadow-red-600/20">
-              PG
+          {/* Top Brand & Server Status Profile Header */}
+          <div className="p-4 border-b border-neutral-900/80 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {/* Server Profile Picture with Green Online Status Outline */}
+              <div className="relative">
+                <div 
+                  className="w-9 h-9 rounded-full border-2 p-0.5 flex items-center justify-center font-bold text-xs text-black"
+                  style={{ borderColor: '#22c55e', backgroundColor: '#eab308' }} // Green online indicator ring with Yellow avatar
+                >
+                  PG
+                </div>
+                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-black" />
+              </div>
+
+              <div className="truncate">
+                <div className="font-extrabold text-sm tracking-wider flex items-center gap-1 text-white">
+                  peely<span style={{ color: currentTheme.primary }}>gen</span>
+                </div>
+                <div className="text-[10px] text-green-400 font-medium flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" /> Server Online
+                </div>
+              </div>
             </div>
-            <span className="font-bold text-lg tracking-wider text-white">
-              peely<span className="text-red-500">gen</span>
-            </span>
           </div>
 
-          {/* User Profile Info */}
-          <div className="px-5 py-4 border-b border-neutral-900 flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-neutral-800 border border-neutral-700 overflow-hidden flex items-center justify-center text-xs font-bold">
-              SW
+          {/* User Profile Strip */}
+          <div className="px-4 py-3 border-b border-neutral-900/80 flex items-center gap-3 bg-black/20">
+            <div className="w-7 h-7 rounded-full bg-neutral-800 border border-neutral-700 flex items-center justify-center text-xs font-bold text-white">
+              S
             </div>
             <div className="truncate">
-              <div className="text-sm font-semibold truncate text-neutral-200">sweat</div>
-              <div className="text-[10px] text-neutral-500 uppercase tracking-widest font-bold">Premium</div>
+              <div className="text-xs font-semibold truncate text-white">sweat</div>
+              <div className="text-[9px] uppercase tracking-widest font-bold" style={{ color: currentTheme.primary }}>
+                VIP Tier
+              </div>
             </div>
           </div>
 
           {/* Navigation Links */}
-          <nav className="p-3 space-y-6 text-xs font-medium text-neutral-400">
+          <nav className="p-3 space-y-5 text-xs font-medium">
             <div>
-              <div className="px-3 mb-2 text-[10px] font-bold tracking-widest text-neutral-600 uppercase">
-                Pinned
+              <div className="px-3 mb-2 text-[10px] font-bold tracking-widest text-neutral-500 uppercase">
+                Main Menu
               </div>
-              <button 
-                onClick={() => setActiveTab('media')}
-                className={`w-full text-left px-3 py-2 rounded-md flex items-center gap-2.5 transition-colors ${activeTab === 'media' ? 'bg-neutral-900 text-white font-semibold' : 'hover:bg-neutral-900/50 hover:text-neutral-200'}`}
-              >
-                <span>🎥</span> media
-              </button>
-            </div>
-
-            <div>
-              <div className="px-3 mb-2 text-[10px] font-bold tracking-widest text-neutral-600 uppercase">
-                Main
-              </div>
-              <div className="space-y-0.5">
+              <div className="space-y-1">
                 {[
                   { id: 'home', label: 'home', icon: '🏠' },
                   { id: 'generate', label: 'generate', icon: '⚡' },
-                  { id: 'themes', label: 'themes', icon: '🎨' },
-                  { id: 'activity', label: 'activity', icon: '📈' },
-                  { id: 'vault', label: 'vault', icon: '🔒' },
+                  { id: 'gambling', label: 'upgrader / gamble', icon: '🎰' },
+                  { id: 'themes', label: 'themes & customizer', icon: '🎨' },
+                  { id: 'vault', label: 'account vault', icon: '🔒' },
                 ].map((item) => (
                   <button
                     key={item.id}
                     onClick={() => setActiveTab(item.id)}
-                    className={`w-full text-left px-3 py-2 rounded-md flex items-center gap-2.5 transition-colors ${activeTab === item.id ? 'bg-neutral-900 text-red-500 font-semibold' : 'hover:bg-neutral-900/50 hover:text-neutral-200'}`}
+                    className="w-full text-left px-3 py-2 rounded-lg flex items-center gap-2.5 transition-all"
+                    style={{
+                      backgroundColor: activeTab === item.id ? `${currentTheme.primary}20` : 'transparent',
+                      color: activeTab === item.id ? currentTheme.primary : 'inherit',
+                      fontWeight: activeTab === item.id ? '700' : '500',
+                    }}
                   >
                     <span>{item.icon}</span> {item.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <div className="px-3 mb-2 text-[10px] font-bold tracking-widest text-neutral-600 uppercase">
-                Rewards
-              </div>
-              <div className="space-y-0.5">
-                {['invite rewards', 'message rewards', 'boost rewards', 'referral rewards'].map((item) => (
-                  <button key={item} className="w-full text-left px-3 py-1.5 rounded-md hover:bg-neutral-900/50 hover:text-neutral-200 transition-colors">
-                    {item}
                   </button>
                 ))}
               </div>
@@ -119,227 +152,213 @@ export default function Dashboard() {
           </nav>
         </div>
 
-        {/* Sign Out Button */}
-        <div className="p-3 border-t border-neutral-900">
-          <button className="w-full text-left px-3 py-2 text-xs font-medium text-neutral-500 hover:text-red-400 transition-colors flex items-center gap-2">
-            <span>↳</span> sign out
+        {/* Footer */}
+        <div className="p-3 border-t border-neutral-900/80 text-[11px] text-neutral-500">
+          <button className="w-full text-left px-3 py-2 hover:text-yellow-400 transition-colors flex items-center gap-2">
+            <span>↳</span> disconnect session
           </button>
         </div>
       </aside>
 
-      {/* 2. MAIN CONTENT AREA */}
-      <main className="flex-1 flex flex-col min-w-0 bg-[#0d0d0d]">
+      {/* 2. MAIN CONTENT VIEWPORT */}
+      <main className="flex-1 p-8 overflow-y-auto">
         
-        {/* Top View Viewport: Render selected tab view */}
-        {activeTab === 'generate' ? (
-          
-          /* GENERATOR VIEW */
-          <div className="p-8 max-w-xl mx-auto w-full my-auto">
-            <div className="bg-[#0f0f0f] border border-neutral-800/80 rounded-xl p-6 shadow-2xl relative">
-              <div className="text-center mb-6">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-red-500 bg-red-500/10 px-2.5 py-1 rounded-full border border-red-500/20">
-                  Operational
-                </span>
-                <h1 className="text-2xl font-bold text-white mt-3">Generator Dashboard</h1>
-                <p className="text-xs text-neutral-400 mt-1">Select a service to pull credentials from inventory</p>
-              </div>
+        {/* TAB 1: GENERATOR */}
+        {activeTab === 'generate' && (
+          <div className="max-w-xl mx-auto space-y-6">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-white">Account Generator</h1>
+              <p className="text-xs text-neutral-400 mt-1">Pull high-tier stock directly from PeelyGen inventory</p>
+            </div>
 
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-2">
-                    Select Service
-                  </label>
-                  <select
-                    value={service}
-                    onChange={(e) => setService(e.target.value)}
-                    className="w-full bg-[#080808] border border-neutral-800 rounded-lg px-3.5 py-2.5 text-sm text-neutral-200 focus:outline-none focus:border-red-500 transition-colors"
-                  >
-                    <option value="roblox">Roblox</option>
-                    <option value="fortnite">Fortnite</option>
-                    <option value="minecraft">Minecraft</option>
-                    <option value="spotify">Spotify</option>
-                  </select>
-                </div>
-
-                <button
-                  onClick={handleGenerate}
-                  disabled={loading}
-                  className="w-full bg-red-600 hover:bg-red-500 text-white font-semibold py-2.5 px-4 rounded-lg transition-all duration-200 text-sm shadow-lg shadow-red-600/20 active:scale-[0.99] disabled:opacity-50"
+            <div className="p-6 rounded-xl border border-neutral-800 shadow-2xl space-y-4" style={{ backgroundColor: currentTheme.card }}>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider mb-2 text-neutral-400">
+                  Select Target Service
+                </label>
+                <select
+                  value={service}
+                  onChange={(e) => setService(e.target.value)}
+                  className="w-full bg-black/40 border border-neutral-800 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none text-white"
                 >
-                  {loading ? 'Generating...' : 'Generate Account'}
-                </button>
+                  <option value="roblox">Roblox (Premium Stock)</option>
+                  <option value="fortnite">Fortnite (Skins/Stacked)</option>
+                  <option value="minecraft">Minecraft (Java/Bedrock)</option>
+                  <option value="spotify">Spotify Premium</option>
+                </select>
               </div>
+
+              <button
+                onClick={handleGenerate}
+                disabled={loading}
+                className="w-full font-bold py-3 px-4 rounded-lg transition-all text-sm shadow-lg text-black disabled:opacity-50"
+                style={{ backgroundColor: currentTheme.primary }}
+              >
+                {loading ? 'Fetching Account...' : 'Generate Account'}
+              </button>
 
               {error && (
-                <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-xs text-red-400">
+                <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-xs text-red-400">
                   {error}
                 </div>
               )}
 
               {account && (
-                <div className="mt-4 p-4 bg-[#080808] border border-neutral-800 rounded-lg font-mono text-xs">
-                  <div className="flex justify-between items-center text-neutral-500 text-[10px] mb-2 uppercase tracking-wider">
-                    <span>Generated Result</span>
+                <div className="p-4 bg-black/50 border border-neutral-800 rounded-lg font-mono text-xs">
+                  <div className="flex justify-between items-center text-[10px] text-neutral-500 uppercase tracking-wider mb-2">
+                    <span>Account Credentials Received</span>
                     <button 
                       onClick={() => navigator.clipboard.writeText(typeof account === 'string' ? account : JSON.stringify(account))}
-                      className="hover:text-white transition-colors"
+                      className="hover:text-white"
                     >
                       Copy
                     </button>
                   </div>
-                  <pre className="text-neutral-200 whitespace-pre-wrap break-all">
+                  <pre className="whitespace-pre-wrap break-all text-neutral-200">
                     {typeof account === 'object' ? JSON.stringify(account, null, 2) : account}
                   </pre>
                 </div>
               )}
             </div>
           </div>
+        )}
 
-        ) : (
-
-          /* THEME EDITOR DASHBOARD VIEW (Default) */
-          <div className="p-8 max-w-6xl w-full mx-auto space-y-6">
-            
-            {/* Header Title */}
+        {/* TAB 2: GAMBLING / UPGRADER */}
+        {activeTab === 'gambling' && (
+          <div className="max-w-2xl mx-auto space-y-6">
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-white">themes</h1>
-              <p className="text-xs text-neutral-400 mt-0.5">customize every aspect of your dashboard</p>
+              <h1 className="text-2xl font-bold tracking-tight text-white">Account Upgrader</h1>
+              <p className="text-xs text-neutral-400 mt-1">Gamble your generated account for a higher-tier multiplier stock</p>
             </div>
 
-            {/* Dashboard Grid */}
-            <div className="grid grid-cols-12 gap-6">
-              
-              {/* LEFT COLUMN: Presets List */}
-              <div className="col-span-12 lg:col-span-5 space-y-6">
-                
-                {/* Presets Card */}
-                <div className="bg-[#0f0f0f] border border-neutral-800 rounded-xl p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2 text-xs font-semibold text-neutral-200">
-                      <span>🎨</span> presets
-                    </div>
-                    <span className="text-[10px] text-neutral-500 font-mono">31 total</span>
-                  </div>
-
-                  <input
-                    type="text"
-                    placeholder="Search presets"
-                    className="w-full bg-[#080808] border border-neutral-800 rounded-lg px-3 py-1.5 text-xs text-neutral-300 placeholder-neutral-600 focus:outline-none focus:border-neutral-700 mb-3"
-                  />
-
-                  <div className="space-y-2">
-                    {[
-                      { id: 'hellgen', name: 'hell gen', desc: 'default crimson & black', color: 'bg-red-600' },
-                      { id: 'midnight', name: 'midnight', desc: 'deep indigo void', color: 'bg-indigo-600' },
-                      { id: 'neongreen', name: 'neon green', desc: 'terminal hacker mode', color: 'bg-emerald-500' },
-                      { id: 'ice', name: 'ice', desc: 'arctic blue frost', color: 'bg-sky-400' },
-                      { id: 'purplehaze', name: 'purple haze', desc: 'deep violet atmosphere', color: 'bg-purple-600' },
-                      { id: 'blood', name: 'blood', desc: 'deep crimson darkness', color: 'bg-red-800' },
-                    ].map((preset) => (
-                      <div
-                        key={preset.id}
-                        onClick={() => setActivePreset(preset.id)}
-                        className={`p-3 rounded-lg border cursor-pointer transition-all flex items-center justify-between ${activePreset === preset.id ? 'border-red-600/60 bg-red-950/10' : 'border-neutral-800/80 bg-[#080808] hover:border-neutral-700'}`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className={`w-2.5 h-2.5 rounded-full ${preset.color}`} />
-                          <div>
-                            <div className="text-xs font-bold text-neutral-200">{preset.name}</div>
-                            <div className="text-[10px] text-neutral-500">{preset.desc}</div>
-                          </div>
-                        </div>
-                        {activePreset === preset.id && <span className="text-xs text-red-500 font-bold">✓</span>}
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Pagination Footer */}
-                  <div className="flex items-center justify-between mt-4 pt-3 border-t border-neutral-900 text-[10px] text-neutral-500">
-                    <button className="px-2.5 py-1 rounded bg-[#080808] border border-neutral-800 hover:text-neutral-300">‹ prev</button>
-                    <span>page 1 of 6</span>
-                    <button className="px-2.5 py-1 rounded bg-[#080808] border border-neutral-800 hover:text-neutral-300">next ›</button>
-                  </div>
-                </div>
-
-                {/* Live Preview Panel */}
-                <div className="bg-[#0f0f0f] border border-neutral-800 rounded-xl p-4">
-                  <div className="text-xs font-semibold text-neutral-200 flex items-center gap-2 mb-3">
-                    <span>👁</span> preview
-                  </div>
-                  <div className="bg-[#080808] border border-neutral-800 rounded-lg p-4 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-red-600" />
-                      <span className="text-xs font-bold text-white">hellgen</span>
-                    </div>
-                    <p className="text-[10px] text-neutral-500">preview of your theme configuration</p>
-                    <button className="w-full bg-red-600 text-white font-medium text-xs py-2 rounded-lg shadow-md shadow-red-600/20">
-                      sample button
-                    </button>
-                    <input
-                      disabled
-                      placeholder="sample input field"
-                      className="w-full bg-[#111111] border border-neutral-800 rounded-lg px-3 py-1.5 text-xs text-neutral-500"
-                    />
-                  </div>
-                </div>
-
+            <div className="p-6 rounded-xl border border-neutral-800 shadow-2xl space-y-5" style={{ backgroundColor: currentTheme.card }}>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider mb-2 text-neutral-400">
+                  Enter Account / Item to Risk
+                </label>
+                <input
+                  type="text"
+                  value={upgradeInput}
+                  onChange={(e) => setUpgradeInput(e.target.value)}
+                  placeholder="e.g. Standard Roblox Account #4092"
+                  className="w-full bg-black/40 border border-neutral-800 rounded-lg px-3.5 py-2.5 text-sm focus:outline-none text-white"
+                />
               </div>
 
-              {/* RIGHT COLUMN: Color Property Editor */}
-              <div className="col-span-12 lg:col-span-7 space-y-4">
-                
-                {/* Action Bar */}
-                <div className="flex items-center justify-between gap-2 overflow-x-auto pb-1">
-                  <div className="flex bg-[#0f0f0f] p-1 rounded-lg border border-neutral-800 text-xs font-medium">
-                    <button className="bg-red-600 text-white px-3 py-1 rounded-md shadow">colors</button>
-                    <button className="text-neutral-400 px-3 py-1 hover:text-white">fonts</button>
-                    <button className="text-neutral-400 px-3 py-1 hover:text-white">effects</button>
-                    <button className="text-neutral-400 px-3 py-1 hover:text-white">background</button>
-                  </div>
-
-                  <div className="flex items-center gap-1.5 text-xs font-medium">
-                    <button className="px-2.5 py-1.5 rounded-lg border border-neutral-800 bg-[#0f0f0f] text-neutral-300 hover:bg-neutral-800">
-                      save theme
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider mb-2 text-neutral-400">
+                  Target Multiplier ({multiplier}x)
+                </label>
+                <div className="grid grid-cols-4 gap-2">
+                  {[1.5, 2, 5, 10].map((m) => (
+                    <button
+                      key={m}
+                      onClick={() => setMultiplier(m)}
+                      className="py-2 rounded-lg border border-neutral-800 text-xs font-bold transition-all text-white"
+                      style={{
+                        backgroundColor: multiplier === m ? currentTheme.primary : 'transparent',
+                        color: multiplier === m ? '#000000' : 'inherit'
+                      }}
+                    >
+                      {m}x
                     </button>
-                  </div>
-                </div>
-
-                {/* Sub-category Tabs */}
-                <div className="flex gap-2 border-b border-neutral-900 pb-2 text-xs font-medium text-neutral-400">
-                  <button className="text-red-500 border-b-2 border-red-500 pb-2 px-1">backgrounds</button>
-                  <button className="hover:text-neutral-200 px-1">brand</button>
-                  <button className="hover:text-neutral-200 px-1">surfaces</button>
-                  <button className="hover:text-neutral-200 px-1">sidebar</button>
-                </div>
-
-                {/* Color Inputs Grid */}
-                <div className="bg-[#0f0f0f] border border-neutral-800 rounded-xl p-4 space-y-3">
-                  {[
-                    { label: 'background', key: 'background' },
-                    { label: 'text', key: 'text' },
-                    { label: 'card surface', key: 'cardSurface' },
-                    { label: 'sidebar / navbar', key: 'sidebar' },
-                    { label: 'content area', key: 'contentArea' },
-                  ].map((field) => (
-                    <div key={field.key} className="flex items-center justify-between p-2.5 rounded-lg bg-[#080808] border border-neutral-800/60">
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="color"
-                          value={colors[field.key]}
-                          onChange={(e) => setColors({ ...colors, [field.key]: e.target.value })}
-                          className="w-5 h-5 rounded cursor-pointer bg-transparent border-0"
-                        />
-                        <span className="text-xs font-medium text-neutral-300">{field.label}</span>
-                      </div>
-                      <span className="font-mono text-xs text-neutral-500 uppercase">{colors[field.key]}</span>
-                    </div>
                   ))}
                 </div>
-
               </div>
 
+              <div className="p-4 bg-black/30 rounded-lg border border-neutral-800/80 text-center space-y-1">
+                <div className="text-[10px] uppercase font-bold text-neutral-500">Estimated Win Probability</div>
+                <div className="text-xl font-mono font-extrabold" style={{ color: currentTheme.primary }}>
+                  {((95 / multiplier)).toFixed(1)}%
+                </div>
+              </div>
+
+              <button
+                onClick={handleUpgrade}
+                disabled={isUpgrading || !upgradeInput}
+                className="w-full font-bold py-3 px-4 rounded-lg text-black transition-all text-sm disabled:opacity-50"
+                style={{ backgroundColor: currentTheme.primary }}
+              >
+                {isUpgrading ? 'Rolling Server Hash...' : `Risk Item for ${multiplier}x Upgrade`}
+              </button>
+
+              {upgradeResult && (
+                <div className={`p-4 rounded-lg border font-mono text-xs text-center space-y-1 ${upgradeResult.success ? 'bg-green-500/10 border-green-500/30 text-green-400' : 'bg-red-500/10 border-red-500/30 text-red-400'}`}>
+                  <div className="font-bold uppercase tracking-wider text-sm">
+                    {upgradeResult.success ? '🎉 Upgrade Successful!' : '💥 Upgrade Failed'}
+                  </div>
+                  <p className="text-[11px] opacity-80">
+                    Rolled: {upgradeResult.roll} (Needed &le; {upgradeResult.target})
+                  </p>
+                  {upgradeResult.reward && (
+                    <p className="text-xs font-bold text-white mt-2">New Item: {upgradeResult.reward}</p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 3: THEMES & CUSTOMIZER */}
+        {activeTab === 'themes' && (
+          <div className="max-w-4xl mx-auto space-y-6">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-white">Themes & Aesthetics</h1>
+              <p className="text-xs text-neutral-400 mt-1">Switch dashboard colors live or customize palettes</p>
             </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {Object.keys(presets).map((key) => {
+                const item = presets[key];
+                return (
+                  <div
+                    key={key}
+                    onClick={() => setActivePreset(key)}
+                    className="p-4 rounded-xl border border-neutral-800 cursor-pointer transition-all flex items-center justify-between"
+                    style={{
+                      backgroundColor: item.card,
+                      borderColor: activePreset === key ? item.primary : 'rgba(38, 38, 38, 0.8)'
+                    }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-4 h-4 rounded-full shadow" style={{ backgroundColor: item.primary }} />
+                      <div>
+                        <div className="text-xs font-bold capitalize text-white">{key === 'peelygen' ? 'peely gen (default)' : key}</div>
+                        <div className="text-[10px] text-neutral-500">Preset color profile</div>
+                      </div>
+                    </div>
+                    {activePreset === key && (
+                      <span className="text-xs font-bold" style={{ color: item.primary }}>Active</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 4: HOME / OVERVIEW */}
+        {activeTab === 'home' && (
+          <div className="max-w-4xl mx-auto space-y-6">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-white">Dashboard Overview</h1>
+              <p className="text-xs text-neutral-400 mt-1">Live status of PeelyGen services and account stock</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-4 rounded-xl border border-neutral-800 bg-black/30 space-y-1">
+                <div className="text-[10px] uppercase font-bold text-neutral-500">Total Stock</div>
+                <div className="text-2xl font-bold font-mono text-white">1,420</div>
+              </div>
+              <div className="p-4 rounded-xl border border-neutral-800 bg-black/30 space-y-1">
+                <div className="text-[10px] uppercase font-bold text-neutral-500">Accounts Generated</div>
+                <div className="text-2xl font-bold font-mono text-white">8,912</div>
+              </div>
+              <div className="p-4 rounded-xl border border-neutral-800 bg-black/30 space-y-1">
+                <div className="text-[10px] uppercase font-bold text-neutral-500">Upgrader Win Rate</div>
+                <div className="text-2xl font-bold font-mono text-green-400">48.2%</div>
+              </div>
+            </div>
           </div>
         )}
 
